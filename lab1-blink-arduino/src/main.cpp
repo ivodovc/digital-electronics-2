@@ -14,7 +14,7 @@
 #define LED_GREEN PB5   // PB5 is AVR pin where green on-board LED 
                         // is connected
 #define SHORT_DELAY 250 // Delay in milliseconds¨
-#define LONG_DELAY 500
+#define LONG_DELAY 750 // official Morse Rules, Dash is 3x DOT_time
 #ifndef F_CPU
 # define F_CPU 16000000 // CPU frequency in Hz required for delay funcs
 #endif

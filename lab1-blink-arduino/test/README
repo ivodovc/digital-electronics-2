@@ -6,7 +6,7 @@
 
 ```c
 #define SHORT_DELAY 250 // Delay in milliseconds
-#define LONG_DELAY 500
+#define LONG_DELAY 750 // Dash is three times Dot delay
 #define LED_GREEN PB5
 #define PB5 13  
 
@@ -29,8 +29,8 @@ int main(void)
         _delay_ms(LONG_DELAY);
         digitalWrite(LED_GREEN, LOW);
 
-        // delay between 2 letters
-        _delay_ms(LONG_DELAY*2);
+        // delay between 2 letters is same as dash delay
+        _delay_ms(LONG_DELAY);
 
         // Turn ON/OFF on-board LED
         digitalWrite(LED_GREEN, led_value);
