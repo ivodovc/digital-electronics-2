@@ -31,9 +31,6 @@ int main(void)
 
         // delay between 2 letters is same as dash delay
         _delay_ms(LONG_DELAY);
-
-        // Turn ON/OFF on-board LED
-        digitalWrite(LED_GREEN, led_value);
     }
 
     // Will never reach this
