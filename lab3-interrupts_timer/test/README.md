@@ -1,4 +1,4 @@
-# Lab 3: YOUR_FIRSTNAME LASTNAME
+# Lab 3: IVO DOVIČÁK
 
 ### Overflow times
 
@@ -15,7 +15,8 @@
 2. In `timer.h` header file, define macros also for Timer/Counter2. Listing of part of the header file with settings for Timer/Counter2. Always use syntax highlighting, meaningful comments, and follow C guidelines:
 
    ```c
-  /**
+   
+   /**
    * @name  Definitions for 8-bit Timer/Counter2
    * @note  t_OVF = 1/F_CPU * prescaler * 2^n where n = 8, F_CPU = 16 MHz
    */
