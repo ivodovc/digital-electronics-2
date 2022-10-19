@@ -82,11 +82,12 @@ int main(void)
                                      // ie to character codes
 
     // Display symbol with Character code 0
-    lcd_gotoxy(13,1);
-    lcd_putc(0x03);
-    lcd_gotoxy(14,1);
-    lcd_putc(0x00);
-    lcd_gotoxy(0,0);
+    for (uint8_t i = 0; i < 16; i++){
+        lcd_gotoxy(i,0);
+        lcd_putc(0x00);
+        lcd_gotoxy(i,1);
+        lcd_putc(0x01);
+    }
 
     // Put string(s) on LCD screen
     //lcd_clrscr();
@@ -95,8 +96,8 @@ int main(void)
     // Configuration of 8-bit Timer/Counter2 for Stopwatch update
     // Set the overflow prescaler to 16 ms and enable interrupt
 
-    TIM2_overflow_16ms();
-    TIM2_overflow_interrupt_enable();
+    //TIM2_overflow_16ms();
+    //TIM2_overflow_interrupt_enable();
     // Enables interrupts by setting the global interrupt mask
     sei();
 
