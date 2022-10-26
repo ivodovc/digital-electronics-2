@@ -82,6 +82,7 @@ ISR(TIMER1_OVF_vect)
      no_of_overflows++;
     if (no_of_overflows >= 3)
     {
+        no_of_overflows = 0;
         ADCSRA |= (1<<ADSC);
     }
 }
@@ -90,9 +91,12 @@ ISR(TIMER1_OVF_vect)
  * Function: ADC complete interrupt
  * Purpose:  Display converted value on LCD screen.
  **********************************************************************/
-#define TOLERANCE 20
+#define TOL 20 //TOlerance
+#define RIGHT 0
+#define UP 101
+#define DOWN 246
+#define LEFT 403
 #define SELECT 650
-#define 
 ISR(ADC_vect)
 {
     uint16_t value;
@@ -109,6 +113,22 @@ ISR(ADC_vect)
     lcd_gotoxy(13, 0); lcd_puts("    ");
     itoa(value, string, 16);
     lcd_gotoxy(13, 0); lcd_puts(string);
-
-    if (value>)
+    uint16_t compu = value+TOL;
+    uint16_t compd = value-TOL;
+    if (value<10)
+        compd=0;
+    char button[8] = "nopress";
+    if ( compd < UP && UP < compu ){
+        strcpy(button, "up");
+    }else if (compd < DOWN && DOWN < compu ){
+        strcpy(button, "bown");
+    }else if (compd < LEFT && LEFT < compu ){
+        strcpy(button, "left");
+    }else if (compd <= RIGHT && RIGHT < compu ){
+        strcpy(button, "right");
+    }else if (compd < SELECT && SELECT < compu ){
+        strcpy(button, "select");
+    }
+    lcd_gotoxy(8, 1); lcd_puts("       ");
+    lcd_gotoxy(8, 1); lcd_puts(button);
 }
