@@ -131,4 +131,9 @@ ISR(ADC_vect)
     }
     lcd_gotoxy(8, 1); lcd_puts("       ");
     lcd_gotoxy(8, 1); lcd_puts(button);
+
+    //Voltage
+    uint16_t voltage = (value*5000/1023);
+    itoa(voltage, button, 10);
+    lcd_gotoxy(8, 1); lcd_puts(button);
 }
