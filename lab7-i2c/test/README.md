@@ -1,4 +1,4 @@
-# Lab 7: INSERT_YOUR_FIRSTNAME INSERT_YOUR_LASTNAME
+# Lab 7: Ivo Dovičák
 
 ### Arduino Uno pinout
 
@@ -10,7 +10,16 @@
    * SPI pins
    * external interrupt pins INT0, INT1
 
-   ![your figure](images/arduino_uno_pinout.png)
+   ![arduino_uno_pinout.png](arduino_uno_pinout.png)
+   
+   | ** Functionality** | **Pins** |
+   | :-: | :-: |
+   | PWM generators | 3,5,6,9,10,11|
+   | ADC | 14,15,16,17,18,19 |
+   | UART | 0 (RX), 1(TX) |
+   | I2C | 18 (SDA), 19 (SCL) |
+   | SPI | 10 (SS), 11 (MISO), 12 (MOSI), 13 (SCK) |
+   | external interrupt pins INT0, INT1 | 2 (INT0),3 (INT1) |
 
 ### I2C communication
 
