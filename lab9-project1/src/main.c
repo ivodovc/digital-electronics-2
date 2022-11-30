@@ -20,6 +20,9 @@
 #include <stdlib.h>         // C library. Needed for number conversions
 #include <uart.h> 
 
+#define SW 0
+#define CLK 1
+#define DT 2
 
 /*ADC TEST
     Analog0 -> VRx
@@ -49,6 +52,14 @@ int main(void)
     TIM1_overflow_33ms();
     TIM1_overflow_interrupt_enable();
 
+    // Initialize Rotary Encoder:
+    DDRB &= ~(1<<SW);
+    PORTB |= (1<<SW);
+    DDRB &= ~(1<<CLK);
+    PORTB  &= ~(1<<CLK);
+    DDRB &= ~(1<<DT);
+    PORTB  &= ~(1<<DT);
+
     // Enables interrupts by setting the global interrupt mask
     sei();
 
@@ -69,15 +80,49 @@ int main(void)
  * Function: Timer/Counter1 overflow interrupt
  * Purpose:  Use single conversion mode and start conversion every 100 ms.
  **********************************************************************/
+
+
 ISR(TIMER1_OVF_vect)
 {
     static uint8_t no_of_overflows = 0;
-     no_of_overflows++;
+    char string[1]; 
+    no_of_overflows++;
+    uint8_t sw, clk, dt;
     if (no_of_overflows >= 3)
     {
         no_of_overflows = 0;  
         ADCSRA |= (1<<ADSC);
+        
+        sw = (PINB & (1<<SW));
+        clk = (PINB & (1<<CLK))>>CLK;
+        dt = (PINB & (1<<DT))>>DT;
+        //var1 = GPIO_read(&PORTB, 1);
+        //var2 = GPIO_read(&PORTB, 2);
+        uart_puts("SW read: ");
+        itoa(sw, string, 10);
+        uart_puts(string);
+        uart_puts(", ");
+        uart_puts("CLK read: ");
+        itoa(clk, string, 10);
+        uart_puts(string);
+        uart_puts(", ");
+        uart_puts("DT read: ");
+        itoa(dt, string, 10);
+        uart_puts(string);
+        uart_puts("\n ");
+
+        /*uart_puts("PortB1 read: ");
+        itoa(var1, string, 10);
+        uart_puts(string);
+        uart_puts(", ");
+
+        uart_puts("PortB2 read: ");
+        itoa(var2, string, 10);
+        uart_puts(string);
+        uart_puts("\n");*/
     }
+
+    
 }
 
 /**********************************************************************
@@ -93,7 +138,7 @@ ISR(ADC_vect)
 
     // Read converted value
     // Note that, register pair ADCH and ADCL can be read as a 16-bit value ADC
-
+    
     value = ADC;
     if ((ADMUX & 7) == 0) {
         // if x value was read
@@ -104,17 +149,17 @@ ISR(ADC_vect)
         ADMUX |= (1<<MUX0);
         // start conversion
         ADCSRA |= (1<<ADSC);   
-        uart_puts("X Value read: ");
+        /*uart_puts("X Value read: ");
         itoa(value, string, 10);
-        uart_puts(string);
+        uart_puts(string);*/
     }else if  ((ADMUX & 7)  == 1){
         // if y value is being read
         y_value = value;
         // select channel back to x input (channel 0)
         ADMUX &= ~((1<<MUX3) | (1<<MUX2) | (1<<MUX1) | (1<<MUX0));
-        uart_puts("Y Value read: ");
+        /*uart_puts("Y Value read: ");
         itoa(value, string, 10);
         uart_puts(string);
-        uart_puts("\n");
+        uart_puts("\n");*/
     }
 }
