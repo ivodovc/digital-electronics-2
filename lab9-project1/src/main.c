@@ -56,18 +56,34 @@ int main(void)
     DDRB &= ~(1<<SW);
     PORTB |= (1<<SW);
     DDRB &= ~(1<<CLK);
-    PORTB  &= ~(1<<CLK);
+    PORTB |= (1<<SW);
     DDRB &= ~(1<<DT);
-    PORTB  &= ~(1<<DT);
+    PORTB |= (1<<SW);
 
     // Enables interrupts by setting the global interrupt mask
     sei();
-
+    static uint8_t sw, clk, dt;
+    char string[1]; 
     // Infinite loop
     while (1)
     {
         /* Empty loop. All subsequent operations are performed exclusively 
          * inside interrupt service routines ISRs */
+        sw = (PINB & (1<<SW));
+        clk = (PINB & (1<<CLK))>>CLK;
+        dt = (PINB & (1<<DT))>>DT;
+        if (clk!=dt)
+        {
+            uart_puts("Rotated: ");
+            uart_puts("CLK read: ");
+            itoa(clk, string, 10);
+            uart_puts(string);
+            uart_puts(", ");
+            uart_puts("DT read: ");
+            itoa(dt, string, 10);
+            uart_puts(string);
+            uart_puts("\n ");
+        }
     }
 
     // Will never reach this
@@ -87,29 +103,13 @@ ISR(TIMER1_OVF_vect)
     static uint8_t no_of_overflows = 0;
     char string[1]; 
     no_of_overflows++;
-    uint8_t sw, clk, dt;
+    
     if (no_of_overflows >= 3)
     {
         no_of_overflows = 0;  
         ADCSRA |= (1<<ADSC);
         
-        sw = (PINB & (1<<SW));
-        clk = (PINB & (1<<CLK))>>CLK;
-        dt = (PINB & (1<<DT))>>DT;
-        //var1 = GPIO_read(&PORTB, 1);
-        //var2 = GPIO_read(&PORTB, 2);
-        uart_puts("SW read: ");
-        itoa(sw, string, 10);
-        uart_puts(string);
-        uart_puts(", ");
-        uart_puts("CLK read: ");
-        itoa(clk, string, 10);
-        uart_puts(string);
-        uart_puts(", ");
-        uart_puts("DT read: ");
-        itoa(dt, string, 10);
-        uart_puts(string);
-        uart_puts("\n ");
+       
 
         /*uart_puts("PortB1 read: ");
         itoa(var1, string, 10);
@@ -122,6 +122,7 @@ ISR(TIMER1_OVF_vect)
         uart_puts("\n");*/
     }
 
+    
     
 }
 
