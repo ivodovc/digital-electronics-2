@@ -1,10 +1,14 @@
 /***********************************************************************
  * 
- * Use Analog-to-digital conversion to read push buttons on LCD keypad
- * shield and display it on LCD screen.
+ * LCD Timer controlled by 2Axis Joystick and rotary encoder
+ * Digital Electronics 2 Team Project 1
+ * 5.12.2022
+ * 
  * 
  * ATmega328P (Arduino Uno), 16 MHz, PlatformIO
- *
+ *  
+ * 
+ * Based on code from Digital Electronics 2 Course
  * Copyright (c) 2018 Tomas Fryza
  * Dept. of Radio Electronics, Brno University of Technology, Czechia
  * This work is licensed under the terms of the MIT license.
@@ -25,12 +29,14 @@
 #define ROT_CLK 2
 #define ROT_DT 3
 
+// joystick switch pin
 #define JOY_SW 2
 
 // Global Variables
 uint8_t hours=0, seconds=0, minutes=1, tenths=0; // timer
 uint8_t set_hours=0, set_seconds=0, set_minutes=1, set_tenths=0; // timer
-uint8_t realx=0, realy=0; // curosr
+uint8_t realx=0, realy=0; // real x,y cursor position on lcd
+uint8_t rot_sw_state=1, joy_sw_state=1; // previos state to prevent multiple actions on single click
 #define STARTED 1
 #define STOPPED 0
 uint8_t state = STOPPED;
@@ -44,10 +50,8 @@ void init_lcd()
     // Put string(s) on LCD screen
     lcd_gotoxy(3, 0);
     lcd_puts("00:00:00:0");
-    lcd_gotoxy(0, 1);
-    lcd_puts("START");
-    lcd_gotoxy(11, 1);
-    lcd_puts("RESET");
+    lcd_gotoxy(5, 1);
+    lcd_puts("STOPPED");
 
     //Timer 2 is for LCD
     TIM2_overflow_16ms();
@@ -56,6 +60,7 @@ void init_lcd()
 //Initialization of Joystick functions (ADC)
 void init_joystick()
 {
+    // Timer1 is for starting ADC conversion
     TIM1_overflow_33ms();
     TIM1_overflow_interrupt_enable();
 
@@ -104,29 +109,91 @@ void cursor_off()
 void cursor_on()
 {
     lcd_command(15);
-    lcd_gotoxy(realx, realy);
+    lcd_gotoxy(realx, 0);
 }
 
+// refresh lcd with new values
+void refresh_lcdtime()
+{
+    char string[2];
+    cursor_off();
+        {
+            lcd_gotoxy(12, 0);
+
+            itoa(tenths, string, 10); // Convert decimal value to string
+            lcd_puts(string);
+        }
+
+        {
+            lcd_gotoxy(9, 0);
+            if (seconds < 10)
+            {
+                lcd_puts("0");
+            }
+            itoa(seconds, string, 10); // Convert decimal value to string
+            lcd_puts(string);
+        }
+        {
+            lcd_gotoxy(6, 0);
+            if (minutes < 10)
+            {
+                lcd_puts("0");
+            }
+            itoa(minutes, string, 10); // Convert decimal value to string
+            lcd_puts(string);
+        }
+
+    lcd_gotoxy(3, 0);
+    if (hours < 10)
+    {
+        lcd_puts("0");
+    }
+    itoa(hours, string, 10); // Convert decimal value to string
+    lcd_puts(string);
+    cursor_on();
+}
+
+// Start Clock Timer on LCD
 void start_timer()
 {
     TIM2_overflow_interrupt_enable();
     TIM1_overflow_interrupt_disable();
+    //disable rotary encoder interrupts
     EIMSK &= (~1<<INT0);
+    //save set values to reset back to
     set_hours = hours;
     set_minutes = minutes;
     set_seconds = seconds;
     set_tenths = tenths;
+    lcd_gotoxy(5, 1);
+    lcd_puts("STARTED");
     cursor_off();
 }
 
+// Stop Clock Timer on LCD
 void stop_timer()
 {
     TIM2_overflow_interrupt_disable();
     TIM1_overflow_interrupt_enable();
+    //enable rotary encoder interrupts
     EIMSK = 1<<INT0;
+    lcd_gotoxy(5, 1);
+    lcd_puts("STOPPED");
     cursor_on();
 }
 
+
+void timer_runout(){
+    //if timer ran out blink LED or buzzer or whatever
+}
+
+void reset_timer(){
+    hours = set_hours;
+    minutes= set_minutes;
+    seconds = set_seconds;
+    tenths = set_tenths;
+    refresh_lcdtime();
+}
 /*ADC  Channels
     Analog0 -> VRx
     Analog1 -> VRy
@@ -137,6 +204,7 @@ int main(void)
     uart_init(UART_BAUD_SELECT(9600, F_CPU));
     uart_puts("Start of project...\n");
 
+    // Call all initialization functions
     init_lcd();
     init_joystick();
     init_encoder();
@@ -149,21 +217,21 @@ int main(void)
     {
         /* Empty loop. All subsequent operations are performed exclusively 
          * inside interrupt service routines ISRs */
-        
     }
 
     // Will never reach this
     return 0;
 }
 
+
 ISR(INT0_vect)
 {  
-    char string[1];
     uint8_t sw, clk, dt;
     sw = (PIND & (1<<ROT_SW));
     clk = (PIND & (1<<ROT_CLK))>>ROT_CLK;
     dt = (PIND & (1<<ROT_DT))>>ROT_DT;
-    //SIMULIDE
+    // SIMULIDE
+    // In reality check if clk>dt or clk<dt
     if (clk!=dt)
     {
         uart_puts("LEFT");
@@ -207,42 +275,41 @@ ISR(INT0_vect)
                 break;
         }
     }
-    //REAL
-    /*if (clk==0 && dt==1)
-    {
-        uart_puts("RIGHT");
-    }else if (clk==1 && dt==0)
-    {
-        uart_puts("LEFT");
-    }*/
-    /*uart_puts("CLK read: ");
-    itoa(clk, string, 10);
-    uart_puts(string);
-    uart_puts(", ");
-    uart_puts("DT read: ");
-    itoa(dt, string, 10);
-    uart_puts(string);
-    uart_puts("\n ");*/
     refresh_lcdtime();
 }
 
-/* Interrupt service routines ----------------------------------------*/
-/**********************************************************************
- * Function: Timer/Counter1 overflow interrupt
- * Purpose:  Use single conversion mode and start conversion every 100 ms.
- **********************************************************************/
+// Interrupt Vector for Timer1 overflow
+// Used for starting ADC conversion of joystick position
 ISR(TIMER1_OVF_vect)
 {
     static uint8_t no_of_overflows = 0;
-    char string[1]; 
     no_of_overflows++;
 
-    uint8_t joy_sw = (PINC & (1<<JOY_SW));
+    uint8_t joy_sw = (PINC & (1<<JOY_SW)) >> JOY_SW;
+    uint8_t rot_sw = (PINB & (1<<ROT_SW)) >> ROT_SW;
+    // Start timer
     if (joy_sw==0)
     {
-        uart_puts("START");
-        start_timer();
+        //do it only once per click
+        if (joy_sw_state==1){
+            //otherwise start the clock
+            uart_puts("START");
+            start_timer();
+        }
     }
+    joy_sw_state=joy_sw;
+
+    // Reset timer back to set time
+    if (rot_sw==0)
+    {
+        //do it only once per click
+        if (rot_sw_state==1){
+            //otherwise start the clock
+            uart_puts("RESET");
+            reset_timer();
+        }
+    }
+    rot_sw_state=rot_sw;
 
     if (no_of_overflows >= 3)
     {
@@ -251,17 +318,30 @@ ISR(TIMER1_OVF_vect)
     }
 }
 
+// Interrupt Vector for Timer2 overflow
+// Used for LCD Timer
 ISR(TIMER2_OVF_vect)
 {
     static uint8_t no_of_overflows = 0;
-    char string[2];// String for converted numbers by itoa()
 
-    uint8_t rot_sw = (PINB & (1<<ROT_SW));
+    uint8_t joy_sw = (PINC & (1<<JOY_SW)) >> JOY_SW;
+    if (joy_sw==0)
+    {
+        //do it only once per click
+        if (joy_sw_state==1){
+            //otherwise start the clock
+            uart_puts("STOP");
+            stop_timer();
+        }
+    }
+    joy_sw_state=joy_sw;
+
+    /*uint8_t rot_sw = (PINB & (1<<ROT_SW));
     if (rot_sw==0)
     {
         uart_puts("STOP");
         stop_timer();
-    }
+    }*/
     no_of_overflows++;
     if (no_of_overflows >= 6)
     {
@@ -296,56 +376,21 @@ ISR(TIMER2_OVF_vect)
     refresh_lcdtime();
 }
 
-void refresh_lcdtime()
-{
-    char string[2];
-    cursor_off();
-        {
-            lcd_gotoxy(12, 0);
-
-            itoa(tenths, string, 10); // Convert decimal value to string
-            lcd_puts(string);
-        }
-
-        {
-            lcd_gotoxy(9, 0);
-            if (seconds < 10)
-            {
-                lcd_puts("0");
-            }
-            itoa(seconds, string, 10); // Convert decimal value to string
-            lcd_puts(string);
-        }
-        {
-            lcd_gotoxy(6, 0);
-            if (minutes < 10)
-            {
-                lcd_puts("0");
-            }
-            itoa(minutes, string, 10); // Convert decimal value to string
-            lcd_puts(string);
-        }
-
-    lcd_gotoxy(3, 0);
-    if (hours < 10)
-    {
-        lcd_puts("0");
-    }
-    itoa(hours, string, 10); // Convert decimal value to string
-    lcd_puts(string);
-    cursor_on();
-}
-
 void cursor_change(int8_t x_direction,int8_t y_direction)
 {
     char string[10];
     static uint8_t vcursor_x=0;
-    static uint8_t vcursor_y=0;
+    //static uint8_t vcursor_y=0; not needed for 2 lines, useful for multiline display
     if (x_direction == 1 && vcursor_x<3){
         vcursor_x++;
     }
     if (x_direction == -1 && vcursor_x>0){
         vcursor_x--;
+    }
+    if (y_direction == 1){
+        realy=1;
+    }else if (y_direction==-1) {
+        realy=0;
     }
     uint8_t positions[] = {4,7,10,12};
     realx = positions[vcursor_x];
@@ -363,9 +408,6 @@ void cursor_change(int8_t x_direction,int8_t y_direction)
 ISR(ADC_vect)
 {
     uint16_t value;
-    char string[10];  // String for converted numbers by itoa()
-    static uint8_t cursorx=0;
-    static uint8_t cursory=0;
     // slovenska premenna pretoze ma nic ine nenapada, a dlho som nepisal po slovensky, ale mal by som zacat pisat bakalarku
     static uint8_t doraz = 0; //0 neni doraz, 1 je doraz
 
@@ -399,13 +441,11 @@ ISR(ADC_vect)
         // if y value is being read
         if (value > 1010)
         {
-            cursory=1;
+            cursor_change(0,1);
         }else if (value < 5){
-            cursory = 0;
+            cursor_change(0,-1);
         }
         // select channel back to x input (channel 0)
         ADMUX &= ~((1<<MUX3) | (1<<MUX2) | (1<<MUX1) | (1<<MUX0));
     }
-    //lcd_gotoxy(cursorx, cursory);
 }
-// Else do nothing and exit the ISR
