@@ -41,6 +41,8 @@ uint8_t rot_sw_state=1, joy_sw_state=1; // previos state to prevent multiple act
 #define STOPPED 0
 uint8_t state = STOPPED;
 
+#define LED_GREEN 5
+
 //Initialization of LCD display
 void init_lcd()
 {
@@ -184,7 +186,8 @@ void stop_timer()
 
 
 void timer_runout(){
-    //if timer ran out blink LED or buzzer or whatever
+    //if timer ran out blink LED or buzzer
+     PORTB |= (1<<LED_GREEN);
 }
 
 void reset_timer(){
@@ -208,6 +211,9 @@ int main(void)
     init_lcd();
     init_joystick();
     init_encoder();
+
+    // init LED/buzzer
+    DDRB |= (1<<LED_GREEN);
 
     // Enables interrupts by setting the global interrupt mask
     sei();
@@ -367,7 +373,8 @@ ISR(TIMER2_OVF_vect)
                             seconds = 0; // Seconds of a second
                             minutes = 0; // Minutes of a second
                             hours = 0;
-
+                            stop_timer();
+                            timer_runout();
                         }
                     }
                 }
