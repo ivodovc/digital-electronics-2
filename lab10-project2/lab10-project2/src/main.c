@@ -38,7 +38,7 @@ int main(void)
     DDRB |= (1<<SERVO_PIN);
     // Configuration of 16-bit Timer/Counter1 for LED blinking
     // Set the overflow prescaler to 262 ms and enable interrupt
-    TIM2_overflow_512us();
+    TIM2_overflow_128us();
     TIM2_overflow_interrupt_enable();
 
     // Enables interrupts by setting the global interrupt mask
@@ -64,23 +64,25 @@ int main(void)
 ISR(TIMER2_OVF_vect)
 {
   static uint16_t count = 0;
-  static uint16_t pause = 2000;
-  static uint8_t duty = 2;
+  static uint16_t pause = 4000;
+  static uint8_t duty = 10;
   static uint8_t enabled = 1;
   // Period length is 20 (20*0.5ms = 10ms)
-  uint8_t actual = count%20;
-  if (actual<=duty){
+  uint8_t actual = count%80;
+  if (actual<duty){
+    //uart_puts("1\n");
     PORTB |= (1<<SERVO_PIN);
   }else{
+    //uart_puts("0\n");
     PORTB &= ~(1<<SERVO_PIN);
   }
   count++;
   if (count>pause){
     count=0;
-    if (duty==2){
-      duty = 4;
+    if (duty==16){
+      duty = 32;
     }else{
-      duty = 2;
+      duty = 16;
     }
   }
 }

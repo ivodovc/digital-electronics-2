@@ -18,10 +18,9 @@
 /* Includes ----------------------------------------------------------*/
 #include <avr/io.h>         // AVR device-specific IO definitions
 #include <avr/interrupt.h>  // Interrupts standard C library for AVR-GCC
-#include <gpio.h>           // GPIO library for AVR-GCC
 #include "timer.h"          // Timer library for AVR-GCC
 #include <stdlib.h>         // C library. Needed for number conversions
-#include <uart.h> 
+#include <uart.h>
 #include <lcd.h>   
 
 // rotary encoder
@@ -184,7 +183,6 @@ void stop_timer()
     cursor_on();
 }
 
-
 void timer_runout(){
     //if timer ran out blink LED or buzzer
      PORTB |= (1<<LED_GREEN);
@@ -210,7 +208,7 @@ int main(void)
     // Call all initialization functions
     init_lcd();
     init_joystick();
-    init_encoder();
+    init_encoder(); 
 
     // init LED/buzzer
     DDRB |= (1<<LED_GREEN);
