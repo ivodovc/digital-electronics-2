@@ -25,6 +25,34 @@
 #include <uart.h>
 #include <stdlib.h>
 
+#define JOY_SW 2
+
+//Initialization of Joystick functions (ADC)
+void init_joystick()
+{
+    // Timer1 is for starting ADC conversion
+    TIM1_overflow_33ms();
+    TIM1_overflow_interrupt_enable();
+
+    // Configure Analog-to-Digital Convertion unit
+    // Select ADC voltage reference to "AVcc with external capacitor at AREF pin"
+    ADMUX |= (1<<REFS0); //1
+    ADMUX &= ~(1<<REFS1); //0
+    // Select input channel ADC0 (voltage divider pin)
+    ADMUX &= ~((1<<MUX3) | (1<<MUX2) | (1<<MUX1) | (1<<MUX0)); //0
+    // Enable ADC module
+    ADCSRA |= (1<<ADEN);
+    // Enable conversion complete interrupt
+    ADCSRA |= (1<<ADIE);
+    // Set clock prescaler to 128
+    ADCSRA |= (1<<ADPS2) | (1<<ADPS1) | (1<<ADPS0);
+
+    //set up SW button
+    DDRC &= ~(1<<JOY_SW);
+    PORTC |= (1<<JOY_SW);
+}
+
+
 /* Function definitions ----------------------------------------------*/
 /**********************************************************************
  * Function: Main function where the program execution begins
@@ -45,8 +73,7 @@ int main(void)
     TIM2_overflow_16us();
     TIM2_overflow_interrupt_enable();
 
-    TIM1_overflow_262ms();
-    TIM1_overflow_interrupt_enable();
+    init_joystick();
 
     // Enables interrupts by setting the global interrupt mask
     sei();
@@ -71,9 +98,9 @@ void set_servo(float angle)
   // angle from -90 to 90
   // 1.5ms is 96
   duty = 94 - ((65/2) * (-angle/90));
-  //uart_puts("\nsetting duty: ");
-  //itoa(duty, string, 10);
-  //uart_puts(string);
+  uart_puts("\nsetting angle: ");
+  itoa(angle, string, 10);
+  uart_puts(string);
 }
 
 void set_servo2(float angle)
@@ -81,36 +108,22 @@ void set_servo2(float angle)
   // angle from -90 to 90
   // 1.5ms is 96
   duty2 = 94 - ((65/2) * (-angle/90));
-  //uart_puts("\nsetting duty2: ");
-  //itoa(duty, string, 10);
-  //uart_puts(string);
+  uart_puts("\nsetting angle2: ");
+  itoa(angle, string, 10);
+  uart_puts(string);
 }
+
 
 ISR(TIMER1_OVF_vect)
 {
-  static uint8_t no_of_overflows = 0;
-  int8_t values[] = {45, 80, 90, -45};
-  if ((no_of_overflows%8) == 0)
-  {
-    int8_t angle = values[(no_of_overflows/8)%4];
-    set_servo(angle);
-    
-    uart_puts("\nsetting angle: ");
-    itoa(angle, string, 10);
-    uart_puts(string);
-    uart_puts(".");
-    int8_t angle2 = values[(no_of_overflows/8)%2];
-    set_servo2(angle2);
-    uart_puts("\nsetting angle2: ");
-    itoa(angle2, string, 10);
-    uart_puts(string);
-    uart_puts(".");
-  }
-  if (no_of_overflows > 64)
-  {
-      no_of_overflows = 0;
-  }
+   static uint8_t no_of_overflows = 0;
   no_of_overflows++;
+
+    if (no_of_overflows >= 3)
+    {
+        no_of_overflows = 0;  
+        ADCSRA |= (1<<ADSC);
+    }
 }
 
 ISR(TIMER2_OVF_vect)
@@ -138,4 +151,29 @@ ISR(TIMER2_OVF_vect)
   if (count>period){
     count = 0;
   }
+}
+
+ISR(ADC_vect)
+{
+
+    // Read converted value
+    // Note that, register pair ADCH and ADCL can be read as a 16-bit value ADC
+    float value = ADC;
+    if ((ADMUX & 7) == 0) {
+        //X AXIS ADC
+        set_servo((value-511)/1024 * 180);
+        
+
+        // start reading y joystick position
+        // Select input channel ADC1 (Y joystick)
+        ADMUX &= ~((1<<MUX3) | (1<<MUX2) | (1<<MUX1));
+        ADMUX |= (1<<MUX0);
+        // start conversion
+        ADCSRA |= (1<<ADSC);
+    }else if  ((ADMUX & 7)  == 1){
+        // Y AXIS ADC
+        set_servo2((value-511)/1024 * 180);
+        // select channel back to x input (channel 0)
+        ADMUX &= ~((1<<MUX3) | (1<<MUX2) | (1<<MUX1) | (1<<MUX0));
+    }
 }
