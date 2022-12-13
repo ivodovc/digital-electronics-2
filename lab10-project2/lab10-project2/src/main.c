@@ -22,7 +22,8 @@
 #include <avr/io.h>         // AVR device-specific IO definitions
 #include <avr/interrupt.h>  // Interrupts standard C library for AVR-GCC
 #include "timer.h"          // Timer library for AVR-GCC
-
+#include <uart.h>
+#include <stdlib.h>
 
 /* Function definitions ----------------------------------------------*/
 /**********************************************************************
@@ -32,18 +33,24 @@
  * Returns:  none
  **********************************************************************/
 #define SERVO_PIN 5
+#define SERVO2_PIN 4
 int main(void)
 {
     // Set pins where LEDs are connected as output
     DDRB |= (1<<SERVO_PIN);
+    DDRB |= (1<<SERVO2_PIN);
+    uart_init(UART_BAUD_SELECT(9600, F_CPU));
     // Configuration of 16-bit Timer/Counter1 for LED blinking
     // Set the overflow prescaler to 262 ms and enable interrupt
-    TIM2_overflow_128us();
+    TIM2_overflow_16us();
     TIM2_overflow_interrupt_enable();
+
+    TIM1_overflow_262ms();
+    TIM1_overflow_interrupt_enable();
 
     // Enables interrupts by setting the global interrupt mask
     sei();
-
+uart_puts("hello");
     // Infinite loop
     while (1)
     {
@@ -55,34 +62,80 @@ int main(void)
     return 0;
 }
 
+uint16_t duty = 63;
+uint16_t duty2 = 94;
+char string[4];
 
-/* Interrupt service routines ----------------------------------------*/
-/**********************************************************************
- * Function: Timer/Counter1 overflow interrupt
- * Purpose:  Toggle on-board LED.
- **********************************************************************/
+void set_servo(float angle)
+{
+  // angle from -90 to 90
+  // 1.5ms is 96
+  duty = 94 - ((65/2) * (-angle/90));
+  //uart_puts("\nsetting duty: ");
+  //itoa(duty, string, 10);
+  //uart_puts(string);
+}
+
+void set_servo2(float angle)
+{
+  // angle from -90 to 90
+  // 1.5ms is 96
+  duty2 = 94 - ((65/2) * (-angle/90));
+  //uart_puts("\nsetting duty2: ");
+  //itoa(duty, string, 10);
+  //uart_puts(string);
+}
+
+ISR(TIMER1_OVF_vect)
+{
+  static uint8_t no_of_overflows = 0;
+  int8_t values[] = {45, 80, 90, -45};
+  if ((no_of_overflows%8) == 0)
+  {
+    int8_t angle = values[(no_of_overflows/8)%4];
+    set_servo(angle);
+    
+    uart_puts("\nsetting angle: ");
+    itoa(angle, string, 10);
+    uart_puts(string);
+    uart_puts(".");
+    int8_t angle2 = values[(no_of_overflows/8)%2];
+    set_servo2(angle2);
+    uart_puts("\nsetting angle2: ");
+    itoa(angle2, string, 10);
+    uart_puts(string);
+    uart_puts(".");
+  }
+  if (no_of_overflows > 64)
+  {
+      no_of_overflows = 0;
+  }
+  no_of_overflows++;
+}
+
 ISR(TIMER2_OVF_vect)
 {
+  // 63 cycles is 1 ms
+  // 125 cycles is 2 ms
   static uint16_t count = 0;
-  static uint16_t pause = 4000;
-  static uint8_t duty = 10;
-  static uint8_t enabled = 1;
-  // Period length is 20 (20*0.5ms = 10ms)
-  uint8_t actual = count%80;
-  if (actual<duty){
+  static uint16_t period = 1250;
+  // Period length is 1250 cycles (1250*0.016ms = 20ms)
+  if (count<duty){
     //uart_puts("1\n");
     PORTB |= (1<<SERVO_PIN);
   }else{
     //uart_puts("0\n");
     PORTB &= ~(1<<SERVO_PIN);
   }
+  if (count<duty2){
+    //uart_puts("1\n");
+    PORTB |= (1<<SERVO2_PIN);
+  }else{
+    //uart_puts("0\n");
+    PORTB &= ~(1<<SERVO2_PIN);
+  }
   count++;
-  if (count>pause){
-    count=0;
-    if (duty==16){
-      duty = 32;
-    }else{
-      duty = 16;
-    }
+  if (count>period){
+    count = 0;
   }
 }
