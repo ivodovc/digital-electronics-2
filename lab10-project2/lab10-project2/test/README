@@ -1,11 +1,17 @@
+Popis Softwaru
 
-This directory is intended for PlatformIO Test Runner and project tests.
+Projekt je kvôli jednoduchosti umiestnený len do 1 súboru main.c
 
-Unit Testing is a software testing method by which individual units of
-source code, sets of one or more MCU program modules together with associated
-control data, usage procedures, and operating procedures, are tested to
-determine whether they are fit for use. Unit testing finds problems early
-in the development cycle.
+INICIALIZÁCIA:
+  - Piny (ktoré sú pripojené na interný PWM generátora) sú inicializované ako digitálny output.
+  - Joystick je pripojený na ADC piny, ktoré sú inicializované vo funkcii init_joystick()
+  - interný PWM generátor je inicializovaný vo funkcií init_pw(), kde je zároveň nastavená perióda PWM signálu na 20ms a základná strieda (duty) na 1.5ms pomocou premenných OCR1A a OCR1B
 
-More information about PlatformIO Unit Testing:
-- https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+Kód v podstate využíva len jeden časovač (TIMER0), ktorý spúšťa ADC prevod, v ktorm následne prebieha logia aplikácie. Podobne ako v projekte 1 je použitá premenná joy_sw_state, ktorá kontroluje predošlý stav vstupu aby sa predišlo nechcenému tzv. dvojkliku.
+Stlačením joysticku sa invertuje ovládanie joystickov, pomocou premennej invert_controls.
+
+Interný generátor je ovládaný len zmenou hodnôt OCR1A a OCR1B, 
+použitý vzorec na výpočet striedy je:  OCR = 1000.0f + ((adc_value / 1024.0f) * 1000.0f);
+jedná sa o priamu úmeru, ku ktorej je pripočítaná konštanta 1000 (adc_value nadobúda hodnôt od 0 po 1024, a hodnota OCR môže byť od 1000 po 2000 pre správne fungovanie SERVOmotorov)
+
+Pri užívateľských vstupoch sú použité premenné ako napríklad joy_sw_state (predošlý stav), doraz, ktoré kontrolujú predošlý stav vstupu aby sa predišlo nechcenému tzv. dvojkliku.
