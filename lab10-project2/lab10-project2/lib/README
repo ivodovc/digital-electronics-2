@@ -1,46 +1,17 @@
+Popis Softwaru
 
-This directory is intended for project specific (private) libraries.
-PlatformIO will compile them to static libraries and link into executable file.
+Projekt je kvôli jednoduchosti umiestnený len do 1 súboru main.c
 
-The source code of each library should be placed in a an own separate directory
-("lib/your_library_name/[here are source files]").
+INICIALIZÁCIA:
+  - Piny (ktoré sú pripojené na interný PWM generátora) sú inicializované ako digitálny output.
+  - Joystick je pripojený na ADC piny, ktoré sú inicializované vo funkcii init_joystick()
+  - interný PWM generátor je inicializovaný vo funkcií init_pw(), kde je zároveň nastavená perióda PWM signálu na 20ms a základná strieda (duty) na 1.5ms pomocou premenných OCR1A a OCR1B
 
-For example, see a structure of the following two libraries `Foo` and `Bar`:
+Kód v podstate využíva len jeden časovač (TIMER0), ktorý spúšťa ADC prevod, v ktorm následne prebieha logia aplikácie. Podobne ako v projekte 1 je použitá premenná joy_sw_state, ktorá kontroluje predošlý stav vstupu aby sa predišlo nechcenému tzv. dvojkliku.
+Stlačením joysticku sa invertuje ovládanie joystickov, pomocou premennej invert_controls.
 
-|--lib
-|  |
-|  |--Bar
-|  |  |--docs
-|  |  |--examples
-|  |  |--src
-|  |     |- Bar.c
-|  |     |- Bar.h
-|  |  |- library.json (optional, custom build options, etc) https://docs.platformio.org/page/librarymanager/config.html
-|  |
-|  |--Foo
-|  |  |- Foo.c
-|  |  |- Foo.h
-|  |
-|  |- README --> THIS FILE
-|
-|- platformio.ini
-|--src
-   |- main.c
+Interný generátor je ovládaný len zmenou hodnôt OCR1A a OCR1B, 
+použitý vzorec na výpočet striedy je:  OCR = 1000.0f + ((adc_value / 1024.0f) * 1000.0f);
+jedná sa o priamu úmeru, ku ktorej je pripočítaná konštanta 1000 (adc_value nadobúda hodnôt od 0 po 1024, a hodnota OCR môže byť od 1000 po 2000 pre správne fungovanie SERVOmotorov)
 
-and a contents of `src/main.c`:
-```
-#include <Foo.h>
-#include <Bar.h>
-
-int main (void)
-{
-  ...
-}
-
-```
-
-PlatformIO Library Dependency Finder will find automatically dependent
-libraries scanning project source files.
-
-More information about PlatformIO Library Dependency Finder
-- https://docs.platformio.org/page/librarymanager/ldf.html
+Pri užívateľských vstupoch sú použité premenné ako napríklad joy_sw_state (predošlý stav), doraz, ktoré kontrolujú predošlý stav vstupu aby sa predišlo nechcenému tzv. dvojkliku.
