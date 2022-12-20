@@ -33,8 +33,8 @@
 void init_joystick()
 {
     // Timer1 is for starting ADC conversion
-    TIM1_overflow_33ms();
-    TIM1_overflow_interrupt_enable();
+    TIM0_overflow_16ms();
+    TIM0_overflow_interrupt_enable();
 
     // Configure Analog-to-Digital Convertion unit
     // Select ADC voltage reference to "AVcc with external capacitor at AREF pin"
@@ -108,7 +108,7 @@ int main(void)
  * TIMER1 interrupt controls ADC conversion start,
  * which is designed to start every 100ms (3x33ms=100ms)
  **********************************************************************/
-ISR(TIMER1_OVF_vect)
+ISR(TIMER0_OVF_vect)
 {
   static uint8_t no_of_overflows = 0;
   no_of_overflows++;
