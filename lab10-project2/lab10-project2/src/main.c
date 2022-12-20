@@ -60,8 +60,8 @@ void init_joystick()
  *           Timer/Counter.
  * Returns:  none
  **********************************************************************/
-#define SERVO_PIN 5
-#define SERVO2_PIN 4
+#define SERVO_PIN 3
+#define SERVO2_PIN 2
 int main(void)
 {
     // Set pins where LEDs are connected as output
@@ -77,7 +77,6 @@ int main(void)
 
     // Enables interrupts by setting the global interrupt mask
     sei();
-uart_puts("hello");
     // Infinite loop
     while (1)
     {
@@ -97,20 +96,14 @@ void set_servo(float angle)
 {
   // angle from -90 to 90
   // 1.5ms is 96
-  duty = 94 - ((65/2) * (-angle/90));
-  uart_puts("\nsetting angle: ");
-  itoa(angle, string, 10);
-  uart_puts(string);
+  duty = 94 - ((60) * (-angle/90));
 }
 
 void set_servo2(float angle)
 {
   // angle from -90 to 90
   // 1.5ms is 96
-  duty2 = 94 - ((65/2) * (-angle/90));
-  uart_puts("\nsetting angle2: ");
-  itoa(angle, string, 10);
-  uart_puts(string);
+  duty2 = 94 - ((60) * (-angle/90));
 }
 
 
@@ -153,17 +146,34 @@ ISR(TIMER2_OVF_vect)
   }
 }
 
+uint8_t joy_sw_state;
+uint8_t button_press;
 ISR(ADC_vect)
 {
 
     // Read converted value
+    uint8_t joy_sw = (PINC & (1<<JOY_SW)) >> JOY_SW;
+    // Start timer
+    if (joy_sw==0)
+    {
+        //do it only once per click
+        if (joy_sw_state==1){
+            //otherwise start the clock
+            button_press++;
+        }
+    }
+    joy_sw_state=joy_sw;
     // Note that, register pair ADCH and ADCL can be read as a 16-bit value ADC
     float value = ADC;
     if ((ADMUX & 7) == 0) {
         //X AXIS ADC
-        set_servo((value-511)/1024 * 180);
-        
 
+        if (button_press%2){
+          set_servo((value-511)/1024 * 180);
+        }else{
+          set_servo2((value-511)/1024 * 180);
+        }
+      
         // start reading y joystick position
         // Select input channel ADC1 (Y joystick)
         ADMUX &= ~((1<<MUX3) | (1<<MUX2) | (1<<MUX1));
@@ -172,7 +182,14 @@ ISR(ADC_vect)
         ADCSRA |= (1<<ADSC);
     }else if  ((ADMUX & 7)  == 1){
         // Y AXIS ADC
-        set_servo2((value-511)/1024 * 180);
+        //uart_puts("\nsetting value22: ");
+        //itoa(value, string, 10);
+        //uart_puts(string);
+        if (button_press%2){
+          set_servo2((value-511)/1024 * 180);
+        }else{
+          set_servo((value-511)/1024 * 180);
+        }
         // select channel back to x input (channel 0)
         ADMUX &= ~((1<<MUX3) | (1<<MUX2) | (1<<MUX1) | (1<<MUX0));
     }
