@@ -1,10 +1,10 @@
 /***********************************************************************
  * 
- * Blink two LEDs using functions from GPIO and Timer libraries. Do not 
- * use delay library any more.
+ * Control 2 servomotors using 2 axis joystick and switch to invert controls
  * 
  * ATmega328P (Arduino Uno), 16 MHz, PlatformIO
- *
+ *  
+ * Based on code from Digital Electronics 2 Course
  * Copyright (c) 2018 Tomas Fryza
  * Dept. of Radio Electronics, Brno University of Technology, Czechia
  * This work is licensed under the terms of the MIT license.
@@ -22,10 +22,12 @@
 #include <avr/io.h>         // AVR device-specific IO definitions
 #include <avr/interrupt.h>  // Interrupts standard C library for AVR-GCC
 #include "timer.h"          // Timer library for AVR-GCC
-#include <uart.h>
-#include <stdlib.h>
 
+// Joystick Switch is connected to bit 2 on PortC register (A2)
 #define JOY_SW 2
+// Servo PWM pins are at bit 2 and 3 in Port B register
+#define SERVO_PIN 3
+#define SERVO2_PIN 2
 
 //Initialization of Joystick functions (ADC)
 void init_joystick()
@@ -52,28 +54,41 @@ void init_joystick()
     PORTC |= (1<<JOY_SW);
 }
 
+//Initialization of AVR internal PWM generator
+void init_pwm()
+{
+  // Set PB1 and PB2 as outputs for PWM
+  DDRB |= (1 << 1);
+  DDRB |= (1 << 2);
+  // Set OC1A/OC1B on compare match, clear OC1A/OC1B at BOTTOM (inverting mode)
+  TCCR1A = (1 << COM1A1) | (1 << COM1B1);
+  // Set Waveform Generation Mode to 10 -> PWM, phase correct
+  TCCR1A |= (1 << WGM11);
+  TCCR1B = (1 << WGM13);
+  // Set prescaler clkI/O / 8
+  TCCR1B |= (1 << CS11);
+  // Set PWM period
+  ICR1 = 20000;
+  
+  // Set PWM duty cycle to default values
+  OCR1A = 1500;
+  OCR1B = 1500;
+}
 
 /* Function definitions ----------------------------------------------*/
 /**********************************************************************
- * Function: Main function where the program execution begins
- * Purpose:  Toggle two LEDs using the internal 8- and 16-bit 
- *           Timer/Counter.
- * Returns:  none
+ * Main function,
+ * initalize joystick and AVR internal pwm generators
+ * logic flow is controlled through interrupts
  **********************************************************************/
-#define SERVO_PIN 3
-#define SERVO2_PIN 2
 int main(void)
 {
-    // Set pins where LEDs are connected as output
+    // Set pins where Servos are connected as output
     DDRB |= (1<<SERVO_PIN);
     DDRB |= (1<<SERVO2_PIN);
-    uart_init(UART_BAUD_SELECT(9600, F_CPU));
-    // Configuration of 16-bit Timer/Counter1 for LED blinking
-    // Set the overflow prescaler to 262 ms and enable interrupt
-    TIM2_overflow_16us();
-    TIM2_overflow_interrupt_enable();
 
     init_joystick();
+    init_pwm();
 
     // Enables interrupts by setting the global interrupt mask
     sei();
@@ -88,28 +103,14 @@ int main(void)
     return 0;
 }
 
-uint16_t duty = 63;
-uint16_t duty2 = 94;
-char string[4];
 
-void set_servo(float angle)
-{
-  // angle from -90 to 90
-  // 1.5ms is 96
-  duty = 94 - ((60) * (-angle/90));
-}
-
-void set_servo2(float angle)
-{
-  // angle from -90 to 90
-  // 1.5ms is 96
-  duty2 = 94 - ((60) * (-angle/90));
-}
-
-
+/**********************************************************************
+ * TIMER1 interrupt controls ADC conversion start,
+ * which is designed to start every 100ms (3x33ms=100ms)
+ **********************************************************************/
 ISR(TIMER1_OVF_vect)
 {
-   static uint8_t no_of_overflows = 0;
+  static uint8_t no_of_overflows = 0;
   no_of_overflows++;
 
     if (no_of_overflows >= 3)
@@ -119,59 +120,36 @@ ISR(TIMER1_OVF_vect)
     }
 }
 
-ISR(TIMER2_OVF_vect)
-{
-  // 63 cycles is 1 ms
-  // 125 cycles is 2 ms
-  static uint16_t count = 0;
-  static uint16_t period = 1250;
-  // Period length is 1250 cycles (1250*0.016ms = 20ms)
-  if (count<duty){
-    //uart_puts("1\n");
-    PORTB |= (1<<SERVO_PIN);
-  }else{
-    //uart_puts("0\n");
-    PORTB &= ~(1<<SERVO_PIN);
-  }
-  if (count<duty2){
-    //uart_puts("1\n");
-    PORTB |= (1<<SERVO2_PIN);
-  }else{
-    //uart_puts("0\n");
-    PORTB &= ~(1<<SERVO2_PIN);
-  }
-  count++;
-  if (count>period){
-    count = 0;
-  }
-}
-
+/**********************************************************************
+ * ADC conversion
+ **********************************************************************/
+// joy_sw_state is used to prevent unintended doubleclick 
+// (e.g. if button is pressed for more than 100ms, it would look like it was pressed 2 times)
 uint8_t joy_sw_state;
-uint8_t button_press;
+uint8_t invert_controls=0;
 ISR(ADC_vect)
 {
-
-    // Read converted value
     uint8_t joy_sw = (PINC & (1<<JOY_SW)) >> JOY_SW;
     // Start timer
     if (joy_sw==0)
     {
         //do it only once per click
         if (joy_sw_state==1){
-            //otherwise start the clock
-            button_press++;
+            //invret controls for each axis on joystick
+            invert_controls=!invert_controls;
         }
     }
     joy_sw_state=joy_sw;
+    // Read converted value
+    float adc_value = ADC;
     // Note that, register pair ADCH and ADCL can be read as a 16-bit value ADC
-    float value = ADC;
     if ((ADMUX & 7) == 0) {
         //X AXIS ADC
 
-        if (button_press%2){
-          set_servo((value-511)/1024 * 180);
-        }else{
-          set_servo2((value-511)/1024 * 180);
+        if (invert_controls) {
+          OCR1B = 1000.0f + ((adc_value / 1024.0f) * 1000.0f);
+        } else {
+          OCR1A = 1000.0f + ((adc_value / 1024.0f) * 1000.0f);
         }
       
         // start reading y joystick position
@@ -182,13 +160,11 @@ ISR(ADC_vect)
         ADCSRA |= (1<<ADSC);
     }else if  ((ADMUX & 7)  == 1){
         // Y AXIS ADC
-        //uart_puts("\nsetting value22: ");
-        //itoa(value, string, 10);
-        //uart_puts(string);
-        if (button_press%2){
-          set_servo2((value-511)/1024 * 180);
-        }else{
-          set_servo((value-511)/1024 * 180);
+
+         if (invert_controls) {
+          OCR1A = 1000.0f + ((adc_value / 1024.0f) * 1000.0f);
+        } else {
+          OCR1B = 1000.0f + ((adc_value / 1024.0f) * 1000.0f);
         }
         // select channel back to x input (channel 0)
         ADMUX &= ~((1<<MUX3) | (1<<MUX2) | (1<<MUX1) | (1<<MUX0));
