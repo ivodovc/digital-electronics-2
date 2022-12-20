@@ -69,13 +69,11 @@ Projekt je kvôli jednoduchosti umiestnený len do 1 súboru `main.c`
   - interný PWM generátor je inicializovaný vo funkcií `init_pwm()`, kde je zároveň nastavená perióda PWM signálu na `20ms` a základná strieda (duty) na 1.5ms pomocou premenných `OCR1A` a `OCR1B`
 
 Kód využíva len jeden časovač (`TIMER0`), ktorý spúšťa ADC prevod, v ktorm následne prebieha logia aplikácie. Podobne ako v projekte 1 je použitá premenná `joy_sw_state`, ktorá kontroluje predošlý stav vstupu aby sa predišlo nechcenému tzv. dvojkliku.
-Stlačením joysticku sa invertuje ovládanie joystickov, pomocou premennej invert_controls.
+Stlačením joysticku sa invertuje ovládanie joystickov, pomocou premennej `invert_controls`.
 
-Interný generátor je ovládaný len zmenou hodnôt OCR1A a OCR1B, 
+Interný generátor je ovládaný len zmenou hodnôt `OCR1A` a `OCR1B`, 
 použitý vzorec na výpočet striedy je:  `OCR = 1000.0f + ((adc_value / 1024.0f) * 1000.0f)`
-jedná sa o priamu úmeru, ku ktorej je pripočítaná konštanta 1000 (adc_value nadobúda hodnôt od `0` po `1024`, a hodnota striedy `OCR` môže byť od `1000` po `2000` pre správne fungovanie servomotorov)
-
-Pri užívateľských vstupoch sú použité premenné ako napríklad `joy_sw_state` (predošlý stav), doraz, ktoré kontrolujú predošlý stav vstupu aby sa predišlo nechcenému tzv. dvojkliku.
+jedná sa o priamu úmeru, ku ktorej je pripočítaná konštanta `1000` (`adc_value` nadobúda hodnôt od `0` po `1024`, a hodnota striedy `OCR` môže byť od `1000` po `2000` pre správne fungovanie servomotorov)
 
 
 ### Vývojový diagram
