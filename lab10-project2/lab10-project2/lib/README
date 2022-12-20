@@ -5,7 +5,7 @@ Projekt je kvôli jednoduchosti umiestnený len do 1 súboru `main.c`
 INICIALIZÁCIA:
   - Piny (ktoré sú pripojené na interný PWM generátora) sú inicializované ako digitálny output.
   - Joystick je pripojený na ADC piny, ktoré sú inicializované vo funkcii `init_joystick()`
-  - interný PWM generátor je inicializovaný vo funkcií `init_pw()`, kde je zároveň nastavená perióda PWM signálu na `20ms` a základná strieda (duty) na 1.5ms pomocou premenných `OCR1A` a `OCR1B`
+  - interný PWM generátor je inicializovaný vo funkcií `init_pwm()`, kde je zároveň nastavená perióda PWM signálu na `20ms` a základná strieda (duty) na 1.5ms pomocou premenných `OCR1A` a `OCR1B`
 
 Kód využíva len jeden časovač (`TIMER0`), ktorý spúšťa ADC prevod, v ktorm následne prebieha logia aplikácie. Podobne ako v projekte 1 je použitá premenná `joy_sw_state`, ktorá kontroluje predošlý stav vstupu aby sa predišlo nechcenému tzv. dvojkliku.
 Stlačením joysticku sa invertuje ovládanie joystickov, pomocou premennej invert_controls.
