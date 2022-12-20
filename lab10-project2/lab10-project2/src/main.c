@@ -106,14 +106,14 @@ int main(void)
 
 /**********************************************************************
  * TIMER1 interrupt controls ADC conversion start,
- * which is designed to start every 100ms (3x33ms=100ms)
+ * which is designed to start every 100ms (6x16ms~100ms)
  **********************************************************************/
 ISR(TIMER0_OVF_vect)
 {
   static uint8_t no_of_overflows = 0;
   no_of_overflows++;
 
-    if (no_of_overflows >= 3)
+    if (no_of_overflows >= 6)
     {
         no_of_overflows = 0;  
         ADCSRA |= (1<<ADSC);
